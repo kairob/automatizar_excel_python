@@ -10,53 +10,51 @@
     <table border="1" id="csvTable"></table>
 
     <script>
-        let dataArray = [];
+    let dataArray = [];
 
-        document.getElementById('csvFiles').addEventListener('change', processCSV);
+    document.getElementById('csvFiles').addEventListener('change', processCSV);
 
-        function processCSV() {
-            const fileInput = document.getElementById('csvFiles');
-            const files = fileInput.files;
+    function processCSV() {
+        const fileInput = document.getElementById('csvFiles');
+        const files = fileInput.files;
 
-            if (files.length === 0) return;
+        if (files.length === 0) return;
 
-            const promises = Array.from(files).map(file => {
-                return new Promise((resolve, reject) => {
-                    const reader = new FileReader();
-                    reader.onload = function (e) {
-                        const text = e.target.result;
-                        const rows = text.split("\n").map(row => row.split(","));
-                        resolve(rows);
-                    };
-                    reader.onerror = reject;
-                    reader.readAsText(file);
-                });
+        const promises = Array.from(files).map(file => {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = function (e) {
+                    const text = e.target.result;
+                    const rows = text.split("\n").map(row => row.split(","));
+                    resolve(rows);
+                };
+                reader.onerror = reject;
+                reader.readAsText(file);
             });
+        });
 
-            Promise.all(promises)
-                .then(results => {
-                    results.forEach(rows => dataArray.push(...rows));
-                    displayTable(dataArray);
-                })
-                .catch(error => console.error("Erro ao carregar arquivos:", error));
-               function displayTable(data) {
-            const table = document.getElementById("csvTable");
-            table.innerHTML = "";
+        Promise.all(promises)
+            .then(results => {
+                results.forEach(rows => dataArray.push(...rows));
+                displayTable(dataArray);
+            })
+            .catch(error => console.error("Erro ao carregar arquivos:", error));
+    }
 
-            data.forEach(row => {
-                const tr = document.createElement("tr");
-                row.forEach(cell => {
-                    const td = document.createElement("td");
-                    td.textContent = cell;
-                    tr.appendChild(td);
-                });
-                table.appendChild(tr);
+    function displayTable(data) {
+        const table = document.getElementById("csvTable");
+        table.innerHTML = "";
+
+        data.forEach(row => {
+            const tr = document.createElement("tr");
+            row.forEach(cell => {
+                const td = document.createElement("td");
+                td.textContent = cell;
+                tr.appendChild(td);
             });
-        }
-        
-}
-
-
-    </script>
+            table.appendChild(tr);
+        });
+    }
+</script>
 </body>
 </html>
