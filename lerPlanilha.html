@@ -6,7 +6,8 @@
     <title>Leitura Automática de CSV</title>
 </head>
 <body>
-    <input type="file" id="csvFiles" accept=".csv" multiple>
+    <label for="csvFiles">Selecione arquivos CSV:</label>
+    <input type="file" id="csvFiles" accept=".csv" multiple title="Selecione um ou mais arquivos CSV">
     <table border="1" id="csvTable"></table>
 
     <script>
@@ -25,7 +26,11 @@
                 const reader = new FileReader();
                 reader.onload = function (e) {
                     const text = e.target.result;
-                    const rows = text.split("\n").map(row => row.split(","));
+                    let rows = text.split("\n").map(row => row.split(","));
+                    
+                    // Limpeza dos dados
+                    rows = rows.map(row => row.map(cell => sanitizeText(cell)));
+
                     resolve(rows);
                 };
                 reader.onerror = reject;
@@ -39,6 +44,13 @@
                 displayTable(dataArray);
             })
             .catch(error => console.error("Erro ao carregar arquivos:", error));
+            console.log("Arquivos processados:", dataArray);
+    }
+
+    function sanitizeText(text) {
+        return text.trim() // Remove espaços extras
+            .replace(/\s{2,}/g, " ") // Substitui múltiplos espaços por um único
+            .replace(/(\w)\1{2,}/g, "$1$1"); // Corrige repetições excessivas de letras
     }
 
     function displayTable(data) {
@@ -55,6 +67,6 @@
             table.appendChild(tr);
         });
     }
-</script>
+    </script>
 </body>
 </html>
