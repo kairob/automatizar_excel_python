@@ -6,11 +6,13 @@
     <title>Leitura Automática de CSV</title>
 </head>
 <body>
+   
     <label for="csvFiles">Selecione arquivos CSV:</label>
     <input type="file" id="csvFiles" accept=".csv" multiple title="Selecione um ou mais arquivos CSV">
     <table border="1" id="csvTable"></table>
 
     <script>
+       
     let dataArray = [];
 
     document.getElementById('csvFiles').addEventListener('change', processCSV);
@@ -44,7 +46,7 @@
                 displayTable(dataArray);
             })
             .catch(error => console.error("Erro ao carregar arquivos:", error));
-            console.log("Arquivos processados:", dataArray);
+            
     }
 
     function sanitizeText(text) {
@@ -67,6 +69,54 @@
             table.appendChild(tr);
         });
     }
+    const data_json = [
+  {
+    "ID": 4409000,
+    "DISTRITO": 9
+  },
+  {
+    "ID": 4409010,
+    "DISTRITO": 9
+  },
+  {
+    "ID": 4409020,
+    "DISTRITO": 9
+  },
+  {
+    "ID": 4409022,
+    "DISTRITO": 9
+  },
+  {
+    "ID": 4409025,
+    "DISTRITO": 9
+  },]
+
+ 
+  
+    const locais = [
+  { id: 4301000, logradouro: "Avenida Miguel Estefno" },
+  { id: 4301001, logradouro: "Avenida Miguel Estefno" },
+  { id: 4301002, logradouro: "Avenida Miguel Estefno" },
+  { id: 4301004, logradouro: "Praça Waldemar Marchetti" },
+  { id: 4301006, logradouro: "Viaduto Ministro Aliomar Balee" },
+  { id: 4301010, logradouro: "Avenida Miguel Estefno" },
+  { id: 4301011, logradouro: "Avenida Miguel Estefno" },
+  { id: 4301012, logradouro: "Avenida Miguel Estefno" },
+  { id: 4301030, logradouro: "Estrada Divisor do Parque do E" }
+];
+
+
+
+const locaisRelacionados = locais.map(local => {
+  const referencia = data_json.find(d => d.ID === local.id);
+  return {
+    ...local,
+    distrito: referencia?.DISTRITO ?? "Não encontrado",
+    incluido: referencia ? true : false
+  };
+});
+
+console.log(locaisRelacionados);
     </script>
 </body>
 </html>
