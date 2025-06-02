@@ -49,15 +49,11 @@
                 .catch(error => console.error("Erro ao carregar arquivos:", error));
         }
 
-        function sanitizeText(text) {
-            return text.trim()
-                .replace(/\s{2,}/g, " ")
-                .replace(/(\w)\1{2,}/g, "$1$1");
-        }
+        const dados_dist = [
+          
+   
 
-        const data_json = [
-            [
-  {
+    {
     "ID": 4409000,
     "DISTRITO": 9
   },
@@ -10205,52 +10201,64 @@
     "ID": 9981360,
     "DISTRITO": 397
   }
-]
-            // ... Outros dados
+
         ];
 
         function integrateData() {
-            dataArray.forEach(item => {
-                const referencia = data_json.find(d => d.ID === item.id);
-                item.distrito = referencia ? referencia.DISTRITO : "Não encontrado";
-                item.id_json = referencia ? referencia.ID : "Sem correspondência"; // Adicionando ID do data_json
+            dataArray = dataArray.map(row => {
+                let distritoEncontrado = dados_dist.find(d => d.ID === row.id);
+                return {
+                    id: row.id,
+                    distrito: distritoEncontrado ? distritoEncontrado.DISTRITO : "N/A",
+                    valores: row.valores
+                };
             });
 
-            console.log(dataArray);
-            displayTable(dataArray);
+            updateTable();
         }
 
-        function displayTable(data) {
+        function updateTable() {
             const table = document.getElementById("csvTable");
-            table.innerHTML = "";
+            table.innerHTML = ""; 
 
-            data.forEach(row => {
-                const tr = document.createElement("tr");
+            let headerRow = document.createElement("tr");
+            headerRow.innerHTML = "<th>ID</th><th>DISTRITO</th><th>Valores</th>";
+            table.appendChild(headerRow);
 
-                Object.values(row).forEach(cell => {
-                    const td = document.createElement("td");
-                    td.textContent = cell;
-                    tr.appendChild(td);
-                });
-
-                table.appendChild(tr);
+            dataArray.forEach(row => {
+                let rowElement = document.createElement("tr");
+                rowElement.innerHTML = `<td>${row.id}</td><td>${row.distrito}</td><td>${row.valores.join(", ")}</td>`;
+                table.appendChild(rowElement);
             });
+        }
+
+        function sanitizeText(text) {
+            return text.trim()
+                .replace(/\s{2,}/g, " ")
+                .replace(/(\w)\1{2,}/g, "$1$1");
         }
 
         function downloadUpdatedCSV() {
+            if (dataArray.length === 0) {
+                alert("Nenhum dado para salvar.");
+                return;
+            }
+
             let csvContent = "data:text/csv;charset=utf-8,";
-            csvContent += "ID,Valores,Distrito,ID_JSON\n"; // Incluindo ID do JSON no CSV
+            csvContent += "ID,DISTRITO,Valores\n";
 
             dataArray.forEach(row => {
-                csvContent += `${row.id},${row.valores.join(";")},${row.distrito},${row.id_json}\n`;
+                let line = row.id + "," + row.distrito + "," + row.valores.join(",");
+                csvContent += line + "\n";
             });
 
-            const encodedUri = encodeURI(csvContent);
-            const link = document.createElement("a");
+            let encodedUri = encodeURI(csvContent);
+            let link = document.createElement("a");
             link.setAttribute("href", encodedUri);
             link.setAttribute("download", "dados_atualizados.csv");
             document.body.appendChild(link);
             link.click();
+            document.body.removeChild(link);
         }
     </script>
 </body>
