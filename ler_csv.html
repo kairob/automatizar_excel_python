@@ -2,99 +2,117 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Leitura Automática de CSV</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Filtrar Distritos Dinâmicos</title>
+    <style>
+        .hidden { display: none; }
+    </style>
 </head>
 <body>
-    <label for="csvFiles">Selecione arquivos CSV:</label>
-    <input type="file" id="csvFiles" accept=".csv" multiple title="Selecione um ou mais arquivos CSV">
-    <button onclick="downloadUpdatedCSV()">Baixar CSV Atualizado</button>
-    <table border="1" id="csvTable"></table>
+    <h2>Filtrar Distritos Separadamente</h2>
+    <label for="csvFile">Selecione um arquivo CSV:</label>
+    <input type="file" id="csvFile" accept=".csv" />
+    <br><br>
+    
+    <div id="districtsList"></div>
+    <div id="tablesContainer"></div>
 
     <script>
-        let csvAssociado = []; // Novo array com dados do CSV e coluna de distrito
+        function parseCSV(text) {
+            return text.split('\n').map(row => row.split(',').map(col => col.trim()));
+        }
 
-        document.getElementById('csvFiles').addEventListener('change', processCSV);
+        function removeDuplicateLogradouro(data) {
+            const seenLogradouros = new Set();
+            return data.filter(item => {
+                if (seenLogradouros.has(item.logradouro)) {
+                    return false;
+                }
+                seenLogradouros.add(item.logradouro);
+                return true;
+            });
+        }
 
-        function processCSV() {
-            const fileInput = document.getElementById('csvFiles');
-            const files = fileInput.files;
+        document.getElementById('csvFile').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
 
-            if (files.length === 0) return;
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const text = e.target.result;
+                const rows = parseCSV(text);
 
-            const promises = Array.from(files).map(file => {
-                return new Promise((resolve, reject) => {
-                    const reader = new FileReader();
-                    reader.onload = function (e) {
-                        const text = e.target.result;
-                        let rows = text.split("\n").map(row => row.split(","));
+                console.log("Cabeçalhos detectados:", rows[0]);
 
-                        csvAssociado = rows.map(row => {
-                            let id = parseInt(row[0].trim());
-                            let distritoEncontrado = dados_dist.find(d => d.ID === id);
-                            
+                const idIndex = rows[0].findIndex(col => col.toLowerCase() === 'id');
+                const logradouroIndex = rows[0].findIndex(col => col.toLowerCase() === 'logradouro');
+
+                if (idIndex === -1 || logradouroIndex === -1) {
+                    console.error('Colunas ID ou LOGRADOURO não encontradas no CSV!');
+                    return;
+                }
+
+                let csvData = rows.slice(1).map(row => ({
+                    id: row[idIndex],
+                    logradouro: row[logradouroIndex]
+                })).filter(item => item.id && item.logradouro);
+
+                fetch('csvjson.json')
+                    .then(response => response.json())
+                    .then(jsonData => {
+                        const filteredData = csvData.map(csvItem => {
+                            const match = jsonData.find(jsonItem => String(jsonItem.ID) === csvItem.id);
                             return {
-                                id: id,
-                                distrito: distritoEncontrado ? distritoEncontrado.DISTRITO : "N/A",
-                                valores: row.slice(1).map(cell => sanitizeText(cell))
+                                id: csvItem.id,
+                                logradouro: csvItem.logradouro,
+                                distrito: match ? match.DISTRITO : 'Outro'
                             };
                         });
 
-                        updateTable();
-                    };
-                    reader.onerror = reject;
-                    reader.readAsText(file);
-                });
-            });
+                        const uniqueData = removeDuplicateLogradouro(filteredData);
+                        
+                        let distritos = {};
+                        let contagemDistritos = {};
 
-            Promise.all(promises).catch(error => console.error("Erro ao carregar arquivos:", error));
-        }
+                        uniqueData.forEach(item => {
+                            const distritoCategoria = `Distrito ${item.distrito}`;
+                            
+                            if (!distritos[distritoCategoria]) {
+                                distritos[distritoCategoria] = [];
+                                contagemDistritos[distritoCategoria] = 0;
+                            }
+                            distritos[distritoCategoria].push(item);
+                            contagemDistritos[distritoCategoria]++;
+                        });
 
-        const dados_dist = [ 
-            { "ID": 4618000, "DISTRITO": 319 }, { "ID": 4618001, "DISTRITO": 319 }, 
-            { "ID": 4618002, "DISTRITO": 319 }, { "ID": 4618003, "DISTRITO": 319 }
-        ]; // Exemplo reduzido
+                        let districtButtons = "<h3>Distritos</h3>";
+                        for (const [distrito, count] of Object.entries(contagemDistritos)) {
+                            districtButtons += `<button onclick="showDistrict('${distrito}')">${distrito} - Total: ${count}</button><br>`;
+                        }
 
-        function updateTable() {
-            const table = document.getElementById("csvTable");
-            table.innerHTML = "";
+                        document.getElementById('districtsList').innerHTML = districtButtons;
 
-            let headerRow = document.createElement("tr");
-            headerRow.innerHTML = "<th>ID</th><th>DISTRITO</th><th>Valores</th>";
-            table.appendChild(headerRow);
+                        let html = "";
+                        for (const [distrito, dados] of Object.entries(distritos)) {
+                            html += `<div id="${distrito}" class="hidden"><h3>${distrito} - Total: ${contagemDistritos[distrito]}</h3>`;
+                            html += '<table border="1"><tr><th>ID</th><th>Logradouro</th><th>Distrito</th></tr>';
+                            dados.forEach(item => {
+                                html += `<tr><td>${item.id}</td><td>${item.logradouro}</td><td>${item.distrito}</td></tr>`;
+                            });
+                            html += '</table><br></div>';
+                        }
 
-            csvAssociado.forEach(row => {
-                let rowElement = document.createElement("tr");
-                rowElement.innerHTML = `<td>${row.id}</td><td>${row.distrito}</td><td>${row.valores.join(", ")}</td>`;
-                table.appendChild(rowElement);
-            });
-        }
+                        document.getElementById('tablesContainer').innerHTML = html;
+                    })
+                    .catch(error => console.error('Erro ao carregar JSON:', error));
+            };
 
-        function sanitizeText(text) {
-            return text.trim().replace(/\s{2,}/g, " ").replace(/(\w)\1{2,}/g, "$1$1");
-        }
+            reader.readAsText(file);
+        });
 
-        function downloadUpdatedCSV() {
-            if (csvAssociado.length === 0) {
-                alert("Nenhum dado para salvar.");
-                return;
-            }
-
-            let csvContent = "data:text/csv;charset=utf-8,";
-            csvContent += "ID,DISTRITO,Valores\n";
-
-            csvAssociado.forEach(row => {
-                let line = row.id + "," + row.distrito + "," + row.valores.join(",");
-                csvContent += line + "\n";
-            });
-
-            let encodedUri = encodeURI(csvContent);
-            let link = document.createElement("a");
-            link.setAttribute("href", encodedUri);
-            link.setAttribute("download", "dados_associados.csv");
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
+        function showDistrict(districtId) {
+            document.querySelectorAll('.hidden').forEach(el => el.style.display = 'none');
+            document.getElementById(districtId).style.display = 'block';
         }
     </script>
 </body>
